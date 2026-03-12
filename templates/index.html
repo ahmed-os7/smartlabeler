@@ -1,13 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SmartLabeler</title>
+<meta charset="utf-8">
+<title>SmartLabeler — Upload Dataset</title>
+
+<style>
+body{
+  background:#0f172a;
+  color:white;
+  font-family:system-ui, Arial;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  margin:0;
+}
+
+.card{
+  background:#1e293b;
+  padding:40px;
+  border-radius:18px;
+  width:460px;
+  text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.4);
+}
+
+h2{ margin-top:0 }
+
+input{ margin-top:18px }
+
+button{
+  margin-top:20px;
+  padding:12px 24px;
+  border:none;
+  border-radius:10px;
+  background:linear-gradient(90deg,#6366f1,#22d3ee);
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.result{
+  margin-top:20px;
+  font-size:14px;
+}
+</style>
 </head>
+
 <body>
-    <h2>Upload CIFAR10 Dataset</h2>
-    <form action="/upload" enctype="multipart/form-data" method="post">
-        <input name="file" type="file">
-        <input type="submit" value="Upload">
-    </form>
+
+<div class="card">
+
+<h2>Upload Dataset</h2>
+<p>Select a ZIP file containing your images</p>
+
+<form id="uploadForm">
+  <input type="file" name="file" accept=".zip" required>
+  <br>
+  <button type="submit">Upload Dataset</button>
+</form>
+
+<div class="result" id="result"></div>
+
+</div>
+
+<script>
+
+document.getElementById("uploadForm").onsubmit = async function(e){
+
+  e.preventDefault()
+
+  const formData = new FormData(this)
+
+  const response = await fetch("/upload",{
+    method:"POST",
+    body:formData
+  })
+const data = await response.json()
+
+window.location.href = "/run/" + data.session_id
+}
+
+</script>
+
 </body>
 </html>

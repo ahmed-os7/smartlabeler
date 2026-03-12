@@ -8,14 +8,15 @@ import os
 import zipfile
 import uuid
 import random
-
+from fastapi import Request
+from fastapi.responses import HTMLResponse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
-
+from database import init_db
 from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 
@@ -25,12 +26,36 @@ import torch.optim as optim
 # =========================
 
 app = FastAPI()
-
+init_db()
 os.makedirs("sessions", exist_ok=True)
 app.mount("/sessions", StaticFiles(directory="sessions"), name="sessions")
 
 templates = Jinja2Templates(directory="templates")
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
+
+@app.get("/upload-page", response_class=HTMLResponse)
+async def upload_page(request: Request):
+    return templates.TemplateResponse("upload.html", {"request": request})
+
+
+@app.get("/sessions-page", response_class=HTMLResponse)
+async def sessions_page(request: Request):
+    sessions = os.listdir("sessions")
+    return templates.TemplateResponse(
+        "sessions.html",
+        {"request": request, "sessions": sessions}
+    )
+
+
+@app.get("/results-page", response_class=HTMLResponse)
+async def results_page(request: Request):
+    return templates.TemplateResponse(
+        "results.html",
+        {"request": request, "results": []}
+    )
 
 # =========================
 # Model Versioning Setup
