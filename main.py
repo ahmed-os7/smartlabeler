@@ -2,7 +2,8 @@ from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-
+import os
+import gdown
 import os
 import zipfile
 import uuid
@@ -86,6 +87,12 @@ def get_latest_model_path():
 
 model = models.resnet18(weights=None)
 model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
+model_path = "models/smartlabeler_model.pth"
+
+if not os.path.exists(model_path):
+    print("Downloading model...")
+    url = "https://drive.google.com/uc?id=1uVrMGispCULBL7LuULxW0RNpUr-2"
+    gdown.download(url, model_path, quiet=False)
 latest_model = get_latest_model_path()
 
 if latest_model:
