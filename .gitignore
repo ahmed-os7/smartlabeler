@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+*.pth
+sessions/
+raw_data/
+cifar10_dataset/

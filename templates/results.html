@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SmartLabeler — Active Learning</title>
+
+<style>
+/* =======================
+   THEME TOKENS
+======================= */
+:root{
+  --bg: #0b1220;
+  --panel: rgba(255,255,255,.04);
+  --panel-2: rgba(255,255,255,.06);
+  --border: rgba(255,255,255,.10);
+  --text: #eaf0ff;
+  --muted: rgba(234,240,255,.65);
+  --muted2: rgba(234,240,255,.45);
+  --accent: #6d5efc;
+  --accent2: #22d3ee;
+  --good: #22c55e;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --shadow: 0 20px 50px rgba(0,0,0,.35);
+  --radius: 18px;
+  --radius2: 14px;
+
+  --chip: rgba(255,255,255,.08);
+  --chipBorder: rgba(255,255,255,.12);
+
+  --cardBg: rgba(255,255,255,.05);
+  --cardBorder: rgba(255,255,255,.10);
+  --cardHover: rgba(255,255,255,.08);
+
+  --inputBg: rgba(0,0,0,.18);
+  --inputBorder: rgba(255,255,255,.12);
+
+  --focus: 0 0 0 3px rgba(109,94,252,.35);
+}
+
+[data-theme="light"]{
+  --bg:#f6f8ff;
+  --panel: rgba(15,23,42,.06);
+  --panel-2: rgba(15,23,42,.08);
+  --border: rgba(15,23,42,.12);
+  --text:#0b1220;
+  --muted: rgba(11,18,32,.65);
+  --muted2: rgba(11,18,32,.45);
+  --shadow: 0 20px 50px rgba(2,6,23,.12);
+
+  --chip: rgba(11,18,32,.06);
+  --chipBorder: rgba(11,18,32,.12);
+
+  --cardBg: rgba(255,255,255,.7);
+  --cardBorder: rgba(11,18,32,.10);
+  --cardHover: rgba(255,255,255,.92);
+
+  --inputBg: rgba(255,255,255,.9);
+  --inputBorder: rgba(11,18,32,.12);
+
+  --focus: 0 0 0 3px rgba(109,94,252,.25);
+}
+
+/* =======================
+   BASE
+======================= */
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: radial-gradient(1000px 600px at 20% -10%, rgba(109,94,252,.25), transparent 60%),
+              radial-gradient(900px 600px at 90% 0%, rgba(34,211,238,.18), transparent 55%),
+              var(--bg);
+  color:var(--text);
+}
+
+/* =======================
+   LAYOUT
+======================= */
+.app{
+  min-height:100%;
+  display:flex;
+  flex-direction:column;
+}
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:50;
+  backdrop-filter: blur(14px);
+  background: linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,0));
+  padding:18px 18px 10px;
+}
+
+[data-theme="light"] .topbar{
+  background: linear-gradient(to bottom, rgba(246,248,255,.9), rgba(246,248,255,0));
+}
+
+.topbar-inner{
+  max-width: 1400px;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.logo{
+  width:40px;height:40px;border-radius:14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow: var(--shadow);
+}
+
+.brand h1{
+  margin:0;
+  font-size:16px;
+  letter-spacing:.3px;
+}
+.brand .sub{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:2px;
+}
+
+.actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.btn{
+  appearance:none;
+  border:1px solid var(--border);
+  background: var(--panel);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:12px;
+  cursor:pointer;
+  display:inline-flex;
+  gap:10px;
+  align-items:center;
+  font-weight:600;
+  font-size:13px;
+  transition: .15s ease;
+}
+
+.btn:hover{ transform: translateY(-1px); background: var(--panel-2); }
+.btn:active{ transform: translateY(0); }
+.btn.primary{
+  border-color: rgba(109,94,252,.35);
+  background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(34,211,238,.55));
+  color:white;
+}
+.btn.primary:hover{ filter:brightness(1.03); }
+.btn.danger{
+  border-color: rgba(239,68,68,.35);
+  background: rgba(239,68,68,.12);
+  color: var(--text);
+}
+
+.kbd{
+  font-size:11px;
+  padding:2px 7px;
+  border-radius:8px;
+  border:1px solid var(--chipBorder);
+  background: var(--chip);
+  color: var(--muted);
+  font-weight:700;
+}
+
+.content{
+  max-width:1400px;
+  margin:0 auto;
+  width:100%;
+  padding: 12px 18px 22px;
+}
+
+.stats{
+  display:grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap:12px;
+  margin-top:10px;
+}
+
+.cardStat{
+  grid-column: span 3;
+  background: var(--panel);
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  padding:14px 14px 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.10);
+}
+
+.cardStat .label{
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+.cardStat .value{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:10px;
+}
+.cardStat .num{
+  font-size:22px;
+  font-weight:800;
+  letter-spacing:.2px;
+}
+.cardStat .pill{
+  font-size:12px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid var(--chipBorder);
+  background: var(--chip);
+  color: var(--muted);
+  font-weight:700;
+}
+
+.progressWrap{
+  grid-column: span 12;
+  background: var(--panel);
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  padding:12px 14px;
+}
+.progressTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  color:var(--muted);
+  font-size:12px;
+  margin-bottom:10px;
+}
+.progress{
+  height:10px;
+  border-radius:999px;
+  overflow:hidden;
+  background: rgba(255,255,255,.08);
+}
+.progress > div{
+  height:100%;
+  width:0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+.grid{
+  margin-top:18px;
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap:14px;
+}
+
+.item{
+  background: var(--cardBg);
+  border:1px solid var(--cardBorder);
+  border-radius: var(--radius);
+  overflow:hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  transition:.15s ease;
+  position:relative;
+}
+
+.item:hover{ background: var(--cardHover); transform: translateY(-2px); }
+.item.active{ outline: none; box-shadow: var(--shadow), var(--focus); border-color: rgba(109,94,252,.35); }
+
+.thumb{
+  position:relative;
+  aspect-ratio: 1/1;
+  background: rgba(0,0,0,.18);
+  overflow:hidden;
+}
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  cursor: zoom-in;
+  transform: scale(1.02);
+}
+
+.badgeRow{
+  position:absolute;
+  left:12px;
+  top:12px;
+  display:flex;
+  gap:8px;
+}
+
+.badge{
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--chipBorder);
+  background: rgba(0,0,0,.35);
+  color:#fff;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.2px;
+  backdrop-filter: blur(10px);
+}
+[data-theme="light"] .badge{
+  background: rgba(255,255,255,.85);
+  color: var(--text);
+}
+
+.confMeter{
+  position:absolute;
+  right:12px;
+  top:12px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+}
+.confText{
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--chipBorder);
+  background: rgba(0,0,0,.35);
+  color:#fff;
+  font-size:12px;
+  font-weight:800;
+  backdrop-filter: blur(10px);
+}
+[data-theme="light"] .confText{
+  background: rgba(255,255,255,.85);
+  color: var(--text);
+}
+
+.miniBar{
+  width:110px;
+  height:8px;
+  border-radius:999px;
+  overflow:hidden;
+  background: rgba(255,255,255,.14);
+}
+.miniBar > div{
+  height:100%;
+  width:0%;
+  background: linear-gradient(90deg, var(--bad), var(--warn), var(--good));
+}
+
+.meta{
+  padding:12px 12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.hint{
+  font-size:12px;
+  color: var(--muted);
+}
+
+select{
+  width:100%;
+  padding:10px 10px;
+  border-radius: 12px;
+  border:1px solid var(--inputBorder);
+  background: var(--inputBg);
+  color: var(--text);
+  outline:none;
+  font-weight:700;
+}
+select:focus{ box-shadow: var(--focus); border-color: rgba(109,94,252,.45); }
+
+.footerHelp{
+  margin-top:18px;
+  color: var(--muted2);
+  font-size:12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  border-top:1px solid var(--border);
+  padding-top:14px;
+}
+
+/* =======================
+   MODAL (ZOOM)
+======================= */
+.modal{
+  position:fixed;
+  inset:0;
+  display:none;
+  z-index:100;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(10px);
+  align-items:center;
+  justify-content:center;
+}
+.modal.open{ display:flex; }
+
+.modalPanel{
+  width:min(1100px, 92vw);
+  height:min(720px, 86vh);
+  background: rgba(10,15,26,.65);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+[data-theme="light"] .modalPanel{
+  background: rgba(255,255,255,.86);
+  border-color: rgba(11,18,32,.12);
+}
+
+.modalTop{
+  padding:12px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+
+.modalTitle{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.modalTitle strong{ color:var(--text); font-size:13px; }
+
+.modalBtns{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+.iconBtn{
+  width:42px;height:42px;
+  border-radius: 12px;
+  border:1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  font-weight:900;
+  transition:.15s ease;
+}
+.iconBtn:hover{ transform: translateY(-1px); background: var(--panel-2); }
+.iconBtn:active{ transform: translateY(0); }
+
+.viewer{
+  position:relative;
+  flex:1;
+  overflow:hidden;
+  background: rgba(0,0,0,.25);
+  cursor: grab;
+}
+.viewer.dragging{ cursor: grabbing; }
+
+.viewer img{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%,-50%) scale(1);
+  transform-origin: center center;
+  user-select:none;
+  -webkit-user-drag:none;
+  max-width:none;
+  max-height:none;
+}
+
+.modalBottom{
+  padding:12px 12px;
+  border-top:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:var(--muted);
+  font-size:12px;
+}
+.slider{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+input[type="range"]{
+  width:220px;
+}
+
+/* small screens */
+@media (max-width: 980px){
+  .cardStat{ grid-column: span 6; }
+}
+@media (max-width: 640px){
+  .cardStat{ grid-column: span 12; }
+  input[type="range"]{ width:160px; }
+}
+</style>
+</head>
+
+<body>
+<div class="app" id="appRoot">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>SmartLabeler</h1>
+          <div class="sub">Active Learning — Uncertain samples • Session: <span style="color:var(--text);font-weight:800">{{ session_id }}</span></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="themeBtn" type="button" title="Toggle theme">
+          Theme <span class="kbd">T</span>
+        </button>
+
+        <button class="btn" id="zoomBtn" type="button" title="Zoom modal">
+          Zoom <span class="kbd">Z</span>
+        </button>
+
+        <button class="btn primary" id="saveBtn" type="button" title="Save labels">
+          Save <span class="kbd">S</span>
+        </button>
+
+        <a class="btn" href="/run/{{ session_id }}" title="Next batch">
+          Next <span class="kbd">N</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="content" style="padding-top:10px">
+      <div class="stats">
+        <div class="cardStat">
+          <div class="label">Shown now</div>
+          <div class="value">
+            <div class="num" id="shownNow">{{ results|length }}</div>
+            <div class="pill">batch</div>
+          </div>
+        </div>
+
+        <div class="cardStat">
+          <div class="label">Labeled in this batch</div>
+          <div class="value">
+            <div class="num" id="labeledNow">0</div>
+            <div class="pill">selected</div>
+          </div>
+        </div>
+
+        <div class="cardStat">
+          <div class="label">Shortcuts</div>
+          <div class="value">
+            <div class="num" style="font-size:16px;font-weight:900">1–9 / 0</div>
+            <div class="pill">label</div>
+          </div>
+        </div>
+
+        <div class="cardStat">
+          <div class="label">Navigation</div>
+          <div class="value">
+            <div class="num" style="font-size:16px;font-weight:900">← →</div>
+            <div class="pill">cards</div>
+          </div>
+        </div>
+
+        <div class="progressWrap">
+          <div class="progressTop">
+            <div>Progress (batch)</div>
+            <div><span id="progressPct">0%</span> completed</div>
+          </div>
+          <div class="progress"><div id="progressFill"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <form method="post" action="/save_labels/{{ session_id }}" id="labelForm">
+      <div class="grid" id="grid">
+
+        {% for item in results %}
+        <div class="item" data-index="{{ loop.index0 }}">
+          <div class="thumb">
+            <img
+              src="/{{ item.image }}"
+              alt="image {{ loop.index }}"
+              data-img="/{{ item.image }}"
+              onclick="openModal({{ loop.index0 }})"
+            />
+
+            <div class="badgeRow">
+              <div class="badge">#{{ loop.index }}</div>
+              <div class="badge">Pred: {{ item.predicted_class }}</div>
+            </div>
+
+            <div class="confMeter">
+              <div class="confText">{{ item.confidence }}</div>
+              <div class="miniBar"><div style="width: {{ item.confidence * 100 }}%"></div></div>
+            </div>
+          </div>
+
+          <div class="meta">
+            <div class="row">
+              <div class="hint">Set label (keys 1–9,0)</div>
+              <div class="hint">Open zoom <span class="kbd">Z</span></div>
+            </div>
+
+            <input type="hidden" name="image_{{ loop.index }}" value="{{ item.image }}"/>
+
+            <select name="label_{{ loop.index }}" class="labelSelect" data-idx="{{ loop.index0 }}">
+              {% for i in range(10) %}
+              <option value="{{ i }}">{{ i }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        {% endfor %}
+
+      </div>
+    </form>
+
+    <div class="footerHelp">
+      <div>
+        <span class="kbd">T</span> theme •
+        <span class="kbd">Z</span> zoom •
+        <span class="kbd">S</span> save •
+        <span class="kbd">N</span> next •
+        <span class="kbd">Esc</span> close •
+        <span class="kbd">←</span>/<span class="kbd">→</span> move
+      </div>
+      <div style="color:var(--muted)">Tip: click any image to open zoom modal. Use mouse wheel to zoom.</div>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modalPanel">
+      <div class="modalTop">
+        <div class="modalTitle">
+          <strong id="modalIdx">Image</strong>
+          <span id="modalMeta">—</span>
+        </div>
+        <div class="modalBtns">
+          <button class="iconBtn" type="button" title="Prev (←)" onclick="prevCard()">‹</button>
+          <button class="iconBtn" type="button" title="Next (→)" onclick="nextCard()">›</button>
+          <button class="iconBtn" type="button" title="Close (Esc)" onclick="closeModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="viewer" id="viewer">
+        <img id="modalImg" alt="zoomed image" />
+      </div>
+
+      <div class="modalBottom">
+        <div class="slider">
+          Zoom
+          <input id="zoomRange" type="range" min="1" max="5" step="0.05" value="1" />
+          <span id="zoomVal">1.00×</span>
+        </div>
+        <div class="hint">Wheel = zoom • Drag = move • Double click = reset</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =======================
+   THEME
+======================= */
+const root = document.documentElement;
+const savedTheme = localStorage.getItem("sl_theme") || "dark";
+root.setAttribute("data-theme", savedTheme);
+
+document.getElementById("themeBtn").addEventListener("click", () => {
+  const cur = root.getAttribute("data-theme") || "dark";
+  const next = (cur === "dark") ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("sl_theme", next);
+});
+
+/* =======================
+   STATE
+======================= */
+const items = Array.from(document.querySelectorAll(".item"));
+const selects = Array.from(document.querySelectorAll(".labelSelect"));
+let currentIndex = 0;
+
+/* =======================
+   ACTIVE CARD
+======================= */
+function setActive(index){
+  currentIndex = Math.max(0, Math.min(items.length - 1, index));
+  items.forEach(el => el.classList.remove("active"));
+  const el = items[currentIndex];
+  el.classList.add("active");
+  el.scrollIntoView({behavior:"smooth", block:"center", inline:"center"});
+}
+setActive(0);
+
+/* =======================
+   PROGRESS (batch)
+======================= */
+function refreshProgress(){
+  // we consider "labeled" when user changed selection from default "0"
+  // If you want stricter logic, we can add "touched" tracking.
+  let labeled = 0;
+  for(const s of selects){
+    if(s.value !== "0") labeled++;
+  }
+  document.getElementById("labeledNow").textContent = labeled;
+  const pct = items.length ? Math.round((labeled / items.length) * 100) : 0;
+  document.getElementById("progressPct").textContent = pct + "%";
+  document.getElementById("progressFill").style.width = pct + "%";
+}
+selects.forEach(s => s.addEventListener("change", refreshProgress));
+refreshProgress();
+
+/* =======================
+   SAVE
+======================= */
+document.getElementById("saveBtn").addEventListener("click", () => {
+  document.getElementById("labelForm").submit();
+});
+
+/* =======================
+   KEYBOARD SHORTCUTS
+======================= */
+document.addEventListener("keydown", (e) => {
+  // Avoid interfering while focusing on select dropdown
+  const tag = (document.activeElement && document.activeElement.tagName) || "";
+  const inForm = ["SELECT","INPUT","TEXTAREA"].includes(tag);
+
+  if(e.key === "ArrowRight"){ e.preventDefault(); setActive(currentIndex+1); return; }
+  if(e.key === "ArrowLeft"){ e.preventDefault(); setActive(currentIndex-1); return; }
+
+  if(e.key.toLowerCase() === "z"){ e.preventDefault(); openModal(currentIndex); return; }
+  if(e.key.toLowerCase() === "s"){ e.preventDefault(); document.getElementById("labelForm").submit(); return; }
+  if(e.key.toLowerCase() === "n"){ /* next handled by link click */ return; }
+  if(e.key.toLowerCase() === "t"){ e.preventDefault(); document.getElementById("themeBtn").click(); return; }
+
+  if(e.key === "Escape"){ closeModal(); return; }
+
+  // Labeling keys: 1-9 and 0
+  if(!inForm && /^[0-9]$/.test(e.key)){
+    e.preventDefault();
+    const s = selects[currentIndex];
+    if(s){
+      s.value = e.key;   // 0..9
+      s.dispatchEvent(new Event("change"));
+    }
+  }
+});
+
+/* =======================
+   MODAL / ZOOM VIEWER
+======================= */
+const modal = document.getElementById("modal");
+const modalImg = document.getElementById("modalImg");
+const modalIdx = document.getElementById("modalIdx");
+const modalMeta = document.getElementById("modalMeta");
+const viewer = document.getElementById("viewer");
+const zoomRange = document.getElementById("zoomRange");
+const zoomVal = document.getElementById("zoomVal");
+
+let scale = 1;
+let pos = {x:0,y:0};
+let drag = {active:false, sx:0, sy:0, px:0, py:0};
+
+function applyTransform(){
+  modalImg.style.transform = `translate(-50%,-50%) translate(${pos.x}px, ${pos.y}px) scale(${scale})`;
+  zoomVal.textContent = scale.toFixed(2) + "×";
+  zoomRange.value = scale;
+}
+
+function resetTransform(){
+  scale = 1;
+  pos = {x:0,y:0};
+  applyTransform();
+}
+
+function openModal(i){
+  setActive(i);
+  const img = items[currentIndex].querySelector("img");
+  modalImg.src = img.dataset.img;
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden","false");
+  modalIdx.textContent = `Image #${currentIndex+1}`;
+  modalMeta.textContent = `Use wheel to zoom • Drag to pan`;
+  resetTransform();
+}
+
+function closeModal(){
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden","true");
+}
+
+function nextCard(){ setActive(currentIndex+1); if(modal.classList.contains("open")) openModal(currentIndex); }
+function prevCard(){ setActive(currentIndex-1); if(modal.classList.contains("open")) openModal(currentIndex); }
+
+document.getElementById("zoomBtn").addEventListener("click", () => openModal(currentIndex));
+
+zoomRange.addEventListener("input", () => {
+  scale = parseFloat(zoomRange.value);
+  applyTransform();
+});
+
+viewer.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const delta = Math.sign(e.deltaY) * -0.08;
+  scale = Math.max(1, Math.min(5, scale + delta));
+  applyTransform();
+}, {passive:false});
+
+viewer.addEventListener("mousedown", (e) => {
+  drag.active = true;
+  viewer.classList.add("dragging");
+  drag.sx = e.clientX;
+  drag.sy = e.clientY;
+  drag.px = pos.x;
+  drag.py = pos.y;
+});
+
+window.addEventListener("mousemove", (e) => {
+  if(!drag.active) return;
+  pos.x = drag.px + (e.clientX - drag.sx);
+  pos.y = drag.py + (e.clientY - drag.sy);
+  applyTransform();
+});
+
+window.addEventListener("mouseup", () => {
+  drag.active = false;
+  viewer.classList.remove("dragging");
+});
+
+viewer.addEventListener("dblclick", () => resetTransform());
+
+// click outside panel closes
+modal.addEventListener("click", (e) => {
+  if(e.target === modal) closeModal();
+});
+</script>
+</body>
+</html>
